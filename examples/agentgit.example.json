@@ -1,0 +1,25 @@
+{
+  "builtin": true,
+  "upstreams": [
+    {
+      "name": "cal",
+      "command": ["python", "/ABSOLUTE/PATH/examples/fake_calendar_mcp.py"],
+      "env": {"FAKE_CAL_FILE": "/ABSOLUTE/PATH/data/fake_calendar.json"},
+      "snapshot": {"tool": "list_events", "args": {}},
+      "tools": {
+        "add_event": {
+          "describe": "Add event '{args.title}' at {args.start}",
+          "undo": {"tool": "delete_event", "args": {"event_id": "{result.id}"}},
+          "verify": {"tool": "list_events", "contains": "{args.title}"}
+        },
+        "delete_event": {
+          "describe": "Delete event '{before.title}' ({before.start})",
+          "capture": {"tool": "get_event", "args": {"event_id": "{args.event_id}"}},
+          "undo": {"tool": "add_event", "args": {"id": "{before.id}", "title": "{before.title}", "start": "{before.start}"}},
+          "verify": {"tool": "list_events", "absent": "{args.event_id}"}
+        }
+      }
+    }
+  ],
+  "policy": {"max_actions_per_batch": 25, "max_deletes_per_batch": 5, "deny": [], "auto_approve_max_risk": 0}
+}

@@ -6,8 +6,12 @@ apply() returns an exact undo record, so rollback is plain code, never an LLM gu
 import hashlib
 import json
 import os
+import threading
 import uuid
 from pathlib import Path
+
+from .mcpwire import StdioMCPClient
+from .policy import classify_name, default_risk, load_config, render
 
 
 class AdapterError(Exception):
@@ -17,8 +21,41 @@ class AdapterError(Exception):
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
+_STR = {"type": "string"}
 
-class FilesAdapter:
+
+def _S(desc, props, req):
+    return {"description": desc, "inputSchema": {"type": "object", "properties": props, "required": req}}
+
+
+SCHEMAS = {
+    "list_files": _S("List files in a workspace folder.", {"folder": _STR}, []),
+    "move_file": _S("Move a file; dst may be a folder like 'Study/'.", {"src": _STR, "dst": _STR}, ["src", "dst"]),
+    "delete_file": _S("Delete a file (kept in trash, restorable).", {"path": _STR}, ["path"]),
+    "list_events": _S("List calendar events with their ids.", {}, []),
+    "add_event": _S("Add a calendar event; start looks like 2026-12-10T10:00.", {"title": _STR, "start": _STR, "end": _STR}, ["title", "start"]),
+    "delete_event": _S("Delete a calendar event by id.", {"event_id": _STR}, ["event_id"]),
+    "send_email": _S("Send an email (irreversible; needs explicit confirmation).", {"to": _STR, "subject": _STR, "body": _STR}, ["to", "subject"]),
+}
+
+
+class _Local:
+    """Shared behaviour of the built-in demo adapters."""
+
+    def owns(self, tool):
+        return tool in self.tools
+
+    def effect_of(self, tool):
+        return self.tools[tool]
+
+    def risk_of(self, tool):
+        return default_risk(self.tools[tool], tool)
+
+    def specs(self):
+        return [dict(name=t, effect=e, risk=self.risk_of(t), **SCHEMAS[t]) for t, e in self.tools.items()]
+
+
+class FilesAdapter(_Local):
     name = "files"
     tools = {"list_files": "read", "move_file": "reversible", "delete_file": "reversible"}
 
@@ -100,7 +137,7 @@ class FilesAdapter:
         return _sha("|".join(parts))
 
 
-class CalendarAdapter:
+class CalendarAdapter(_Local):
     """A local JSON calendar. A Google Calendar adapter would implement the same methods."""
     name = "calendar"
     tools = {"list_events": "read", "add_event": "reversible", "delete_event": "reversible"}
@@ -161,7 +198,7 @@ class CalendarAdapter:
         return _sha(json.dumps(sorted(self._load(), key=lambda e: e["id"]), sort_keys=True))
 
 
-class MailAdapter:
+class MailAdapter(_Local):
     """Writes to an outbox file. Sending is irreversible, so it is held and run last."""
     name = "mail"
     tools = {"send_email": "irreversible"}
@@ -188,22 +225,162 @@ class MailAdapter:
         return _sha(self.path.read_text() if self.path.exists() else "")
 
 
+class UpstreamAdapter:
+    """Wraps ANY MCP server. Compensation (undo) is declared in config, never guessed by an LLM.
+
+    rules per upstream tool:  capture (read before-image), undo (inverse call), verify, describe, effect, risk
+    """
+
+    def __init__(self, cfg):
+        self.cfg, self.name = cfg, cfg["name"]
+        self.prefix = cfg.get("prefix", self.name + "_")
+        self.rules = cfg.get("tools", {})
+        self._client, self._tools, self._lock = None, None, threading.RLock()
+
+    # ----- plumbing -----
+    def _cl(self):
+        with self._lock:
+            if self._client is None or self._client.p.poll() is not None:
+                self._client = StdioMCPClient(self.cfg["command"], self.cfg.get("env"), self.cfg.get("cwd"))
+            return self._client
+
+    def _call(self, raw, args):
+        text, err = self._cl().call_tool(raw, args)
+        if err:
+            raise AdapterError(f"{raw} failed: {text[:200]}")
+        return text
+
+    @staticmethod
+    def _parse(text):
+        try:
+            v = json.loads(text)
+            return v if isinstance(v, (dict, list)) else {"text": text}
+        except ValueError:
+            return {"text": text}
+
+    def upstream_tools(self):
+        with self._lock:
+            if self._tools is None:
+                self._tools = self._cl().list_tools()
+            return self._tools
+
+    def close(self):
+        if self._client:
+            self._client.close()
+
+    # ----- classification -----
+    def owns(self, tool):
+        return tool.startswith(self.prefix)
+
+    def raw(self, tool):
+        return tool[len(self.prefix):]
+
+    def effect_of(self, tool):
+        raw, rule = self.raw(tool), self.rules.get(self.raw(tool), {})
+        if rule.get("effect"):
+            return rule["effect"]
+        spec = next((t for t in self.upstream_tools() if t["name"] == raw), None)
+        if spec is None:
+            raise AdapterError(f"unknown tool: {tool}")
+        if (spec.get("annotations") or {}).get("readOnlyHint") or classify_name(raw) == "read":
+            return "read"
+        return "reversible" if rule.get("undo") else "irreversible"  # no declared undo = treat as irreversible
+
+    def risk_of(self, tool):
+        rule = self.rules.get(self.raw(tool), {})
+        return rule["risk"] if "risk" in rule else default_risk(self.effect_of(tool), self.raw(tool))
+
+    def specs(self):
+        out = []
+        for t in self.upstream_tools():
+            name = self.prefix + t["name"]
+            out.append({"name": name, "description": t.get("description", ""), "effect": self.effect_of(name),
+                        "risk": self.risk_of(name), "inputSchema": t.get("inputSchema") or {"type": "object", "properties": {}}})
+        return out
+
+    # ----- adapter interface -----
+    def read(self, tool, a):
+        return self._call(self.raw(tool), a)
+
+    def describe(self, tool, a):
+        raw, rule = self.raw(tool), self.rules.get(self.raw(tool), {})
+        tpl, ctx = rule.get("describe"), {"args": a}
+        if not tpl:
+            return f"{raw}({', '.join(f'{k}={v!r}' for k, v in a.items())})"
+        if "{before" in tpl and rule.get("capture"):  # preview: read the current state to show what will change
+            c = rule["capture"]
+            try:
+                ctx["before"] = self._parse(self._call(c["tool"], render(c.get("args", {}), ctx)))
+            except Exception:
+                ctx["before"] = {}
+        return render(tpl, ctx)
+
+    def apply(self, tool, a):
+        raw, rule, ctx = self.raw(tool), self.rules.get(self.raw(tool), {}), {"args": a}
+        if rule.get("capture"):
+            c = rule["capture"]
+            ctx["before"] = self._parse(self._call(c["tool"], render(c.get("args", {}), ctx)))
+        ctx["result"] = self._parse(self._call(raw, a))
+        u = rule.get("undo")
+        return {"tool": u["tool"], "args": render(u.get("args", {}), ctx)} if u else {}
+
+    def undo(self, u):
+        if not u.get("tool"):
+            raise AdapterError("no undo declared for this tool")
+        self._call(u["tool"], u["args"])
+
+    def verify(self, tool, a, u):
+        v = self.rules.get(self.raw(tool), {}).get("verify")
+        if not v:
+            return True
+        out = self._call(v["tool"], render(v.get("args", {}), {"args": a}))
+        if "contains" in v:
+            return str(render(v["contains"], {"args": a})) in out
+        if "absent" in v:
+            return str(render(v["absent"], {"args": a})) not in out
+        return True
+
+    def snapshot(self):
+        s = self.cfg.get("snapshot")
+        return _sha(self._call(s["tool"], s.get("args", {}))) if s else ""
+
+
 class Registry:
-    """Maps tool names to adapters and effect classes (read, reversible, irreversible)."""
+    """All tools the gateway knows: built-in demo adapters plus any number of upstream MCP servers."""
 
-    def __init__(self, home):
+    def __init__(self, home, cfg=None):
+        self.cfg = cfg or load_config()
+        self.policy = self.cfg["policy"]
         home = Path(home)
-        self.adapters = [FilesAdapter(home / "workspace"), CalendarAdapter(home / "calendar.json"), MailAdapter(home / "outbox.jsonl")]
-        self.by_tool = {t: ad for ad in self.adapters for t in ad.tools}
-
-    def effect(self, tool):
-        ad = self.by_tool.get(tool)
-        return ad.tools[tool] if ad else "irreversible"  # unknown tools are treated as the riskiest class
+        self.adapters = []
+        if self.cfg.get("builtin", True):
+            self.adapters += [FilesAdapter(home / "workspace"), CalendarAdapter(home / "calendar.json"), MailAdapter(home / "outbox.jsonl")]
+        self.adapters += [UpstreamAdapter(u) for u in self.cfg.get("upstreams", [])]
 
     def adapter(self, tool):
-        if tool not in self.by_tool:
-            raise AdapterError(f"unknown tool: {tool}")
-        return self.by_tool[tool]
+        for ad in self.adapters:
+            if ad.owns(tool):
+                return ad
+        raise AdapterError(f"unknown tool: {tool}")
+
+    def effect(self, tool):
+        try:
+            return self.adapter(tool).effect_of(tool)
+        except AdapterError:
+            return "irreversible"  # unknown tools are treated as the riskiest class
+
+    def tool_specs(self):
+        return [s for ad in self.adapters for s in ad.specs()]
 
     def state_hash(self):
         return _sha("|".join(ad.snapshot() for ad in self.adapters))
+
+    def builtin_view(self):
+        if not self.cfg.get("builtin", True):
+            return None
+        return {"files": self.adapters[0].read("list_files", {}), "calendar": self.adapters[1].read("list_events", {})}
+
+    def close(self):
+        for ad in self.adapters:
+            if hasattr(ad, "close"):
+                ad.close()

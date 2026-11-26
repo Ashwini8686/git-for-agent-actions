@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Git for Agent Actions</title>
+<style>
+:root{--bg:#0b1220;--card:#111a2e;--line:#1f2b45;--tx:#e6edf7;--mut:#8aa0c0;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--acc:#38bdf8;--vio:#a78bfa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 Segoe UI,Calibri,Arial,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);background:#0e1730}
+h1{font-size:19px;margin:0}h1 small{display:block;color:var(--mut);font-weight:400;font-size:12px}
+#live{color:var(--ok);font-size:12px}#live:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
+main{padding:18px 24px;max-width:1400px;margin:auto}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:10px;padding:12px 14px}
+.kpi .v{font-size:26px;font-weight:700}.kpi .l{color:var(--mut);font-size:12px}
+.grid{display:grid;grid-template-columns:5fr 4fr 4fr;gap:12px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+h3{margin:0 0 10px;font-size:14px;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.meta{color:var(--mut);font-size:12px;margin-bottom:8px}.empty{color:var(--mut);padding:18px 0}
+.acts{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;max-height:260px;overflow:auto}
+.act{display:flex;align-items:center;gap:8px;background:#0c1526;border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.act .d{flex:1}.sym{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-weight:700;background:#16335a}
+.sym.sirreversible{background:#5a1f1f}.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;background:#1b2a4a;color:var(--mut);border:1px solid transparent}
+.pill.ok{background:#12351f;color:var(--ok)}.pill.warn{background:#3a2c0b;color:var(--warn)}.pill.bad{background:#3d1717;color:var(--bad)}.pill[style]{background:transparent;color:var(--c);border-color:var(--c)}
+.ctl{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0;color:var(--mut)}.chaos input{width:54px;background:#0c1526;color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:3px}
+.btn{border:0;border-radius:8px;color:#fff;padding:9px 16px;font-size:14px;cursor:pointer;margin-right:8px}.ok{--b:var(--ok)}.no{--b:var(--bad)}.st{--b:var(--acc)}.btn{background:var(--b)}
+.sm{background:#1b2a4a;color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;margin-right:6px}
+.svg{width:100%;height:auto}.ax{fill:var(--mut);font-size:9px}.big{fill:var(--tx);font-size:20px;font-weight:700}.dn{max-width:150px;display:block;margin:auto}
+.legend{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;color:var(--mut);font-size:12px}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.feed{max-height:330px;overflow:auto}.ev{display:grid;grid-template-columns:62px 82px 1fr;gap:6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}
+.ev .t,.ev .ag{color:var(--mut)}.ev .ag{grid-column:3;font-size:11px}.e{color:var(--acc)}.e.committed{color:var(--ok)}.e.rolled_back,.e.blocked{color:var(--bad)}.e.staged{color:var(--warn)}
+.tabs{display:flex;gap:6px;margin-bottom:10px}.tb{background:transparent;border:1px solid var(--line);color:var(--mut);padding:6px 14px;border-radius:8px;cursor:pointer}.tb.on{background:#16335a;color:var(--tx)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500;font-size:12px}
+pre{background:#0c1526;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;margin:0}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#toast{position:fixed;bottom:20px;right:20px;background:#16335a;border:1px solid var(--acc);padding:12px 16px;border-radius:10px;opacity:0;transition:.3s;max-width:420px}#toast.show{opacity:1}
+@media(max-width:1000px){.kpis{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}.two{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>Git for Agent Actions<small>A transaction layer for any AI agent: stage, review, commit, verify, revert</small></h1><div id="live">connecting</div></header>
+<main>
+<section class="kpis" id="kpis"></section>
+<section class="grid"><div class="card" id="queue"></div><div class="card" id="charts"></div><div class="card" id="feed"></div></section>
+<section class="card"><div class="tabs" id="tabs"></div><div id="tab"></div></section>
+</main><div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path,body){const o=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};const r=await fetch(path,o);return r.json();}
+function toast(m){const t=$('#toast');t.textContent=m;t.className='show';clearTimeout(toast.t);toast.t=setTimeout(()=>{t.className=''},4500);}
+const COL={committed:'#22c55e',rolled_back:'#ef4444',needs_attention:'#ef4444',staging:'#f59e0b',rejected:'#64748b',reverted:'#38bdf8',committing:'#a78bfa',partly_reverted:'#38bdf8'};
+const TABS=['History','Agents','Capsules','Tools','Data'];
+let tab='History',S={},lastPend=null;
+const risk=r=>r<=3?['Low','ok']:r<=8?['Medium','warn']:['High','bad'];
+const ago=ts=>{const s=Math.max(0,Date.now()/1000-ts);return s<60?Math.floor(s)+'s ago':s<3600?Math.floor(s/60)+'m ago':Math.floor(s/3600)+'h ago';};
+const table=(h,rows)=>'<table><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</table>';
+
+function kpis(s){const m=s.summary;
+  const items=[['Pending actions',m.pending_actions,'#f59e0b'],['Committed batches',m.committed,'#22c55e'],['Auto-recovered',m.rolled_back,'#ef4444'],['Reverted',m.reverted,'#38bdf8'],['Blocked by policy',m.blocked,'#a78bfa'],['Commit success',m.success_rate==null?'n/a':m.success_rate+'%','#22c55e']];
+  $('#kpis').innerHTML=items.map(i=>'<div class="kpi" style="--c:'+i[2]+'"><div class="v">'+i[1]+'</div><div class="l">'+i[0]+'</div></div>').join('');}
+
+function queue(p){const el=$('#queue'),b=p.batch;
+  if(!b){el.innerHTML='<h3>Approval queue</h3><div class="empty">No agent is waiting for approval.</div><button class="btn st" onclick="act(\'demo\')">Simulate an agent request</button><button class="sm" onclick="act(\'seed\')">Reset demo data</button>';return;}
+  const rk=risk(b.risk),irr=p.actions.some(a=>a.effect==='irreversible');
+  el.innerHTML='<h3>Approval queue <span class="pill '+rk[1]+'">risk '+b.risk+' · '+rk[0]+'</span></h3>'
+   +'<div class="meta">Batch #'+b.id+' proposed by <b>'+esc(b.agent)+'</b>. Nothing has changed yet.</div>'
+   +'<div class="acts">'+p.actions.map(a=>'<div class="act"><span class="sym s'+a.effect+'">'+esc(a.symbol)+'</span><span class="d">'+esc(a.desc)+'</span><span class="pill '+(a.effect==='irreversible'?'bad':'')+'">'+a.effect+'</span></div>').join('')+'</div>'
+   +'<div class="ctl">'+(irr?'<label><input type="checkbox" id="irr"> I confirm the irreversible actions</label>':'')
+   +'<label class="chaos">Chaos lab: fail step <input type="number" id="failat" min="1" placeholder="-"></label></div>'
+   +'<button class="btn ok" onclick="approve('+b.id+')">Approve &amp; commit</button><button class="btn no" onclick="act(\'reject\',{batch:'+b.id+'})">Reject</button>';}
+
+async function approve(id){const fa=$('#failat').value,irr=$('#irr');
+  const r=await api('/api/v1/approve',{batch:id,confirm_irreversible:!!(irr&&irr.checked),fail_at:fa?parseInt(fa,10):null});
+  toast(r.ok?'Committed and verified: '+r.applied+' actions':(r.rolled_back?'Rolled back to the starting state. '+r.error:(r.error||'Failed')));refresh(true);}
+async function act(kind,body){const map={demo:'/api/v1/demo',reject:'/api/v1/reject',revert:'/api/v1/revert',seed:'/api/v1/seed',caprun:'/api/v1/capsules/run',capsave:'/api/v1/capsules'};
+  const r=await api(map[kind],body||{});toast(r.error||(r.ok===false?'Not done':'Done'));refresh(true);}
+function capsave(id){const n=prompt('Capsule name?','my-routine');if(n)act('capsave',{batch:id,name:n});}
+
+function bars(rec){const W=300,H=100,bw=W/Math.max(rec.length,1),mx=Math.max(1,...rec.map(r=>r.n));
+  if(!rec.length)return '<div class="empty">No batches yet.</div>';
+  return '<svg viewBox="0 0 '+W+' '+(H+16)+'" class="svg">'+rec.map((r,i)=>{const h=Math.max(4,r.n/mx*H);
+    return '<rect x="'+(i*bw+3)+'" y="'+(H-h)+'" width="'+(bw-6)+'" height="'+h+'" rx="3" fill="'+(COL[r.status]||'#64748b')+'"><title>#'+r.id+' '+r.status+', '+r.n+' actions</title></rect><text x="'+(i*bw+bw/2)+'" y="'+(H+12)+'" text-anchor="middle" class="ax">'+r.id+'</text>';}).join('')+'</svg>';}
+function donut(ef){const cols={reversible:'#38bdf8',irreversible:'#ef4444',read:'#22c55e'},tot=Object.values(ef).reduce((a,b)=>a+b,0);
+  if(!tot)return '<div class="empty">No actions yet.</div>';
+  const R=42,C=2*Math.PI*R;let off=0;
+  const segs=Object.keys(ef).filter(k=>ef[k]>0).map(k=>{const len=ef[k]/tot*C;const s='<circle r="'+R+'" cx="60" cy="60" fill="none" stroke="'+(cols[k]||'#a78bfa')+'" stroke-width="16" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 60 60)"><title>'+k+': '+ef[k]+'</title></circle>';off+=len;return s;}).join('');
+  return '<svg viewBox="0 0 120 120" class="svg dn">'+segs+'<text x="60" y="58" text-anchor="middle" class="big">'+tot+'</text><text x="60" y="74" text-anchor="middle" class="ax">actions</text></svg><div class="legend">'+Object.keys(ef).map(k=>'<span><i style="background:'+(cols[k]||'#a78bfa')+'"></i>'+k+' '+ef[k]+'</span>').join('')+'</div>';}
+
+function feed(l){const ch=l.chain;
+  $('#feed').innerHTML='<h3>Live audit feed <span class="pill '+(ch.ok?'ok':'bad')+'" title="Every entry hashes the previous one">'+(ch.ok?'chain verified ✓ '+ch.entries:'TAMPERED at #'+ch.broken_at)+'</span></h3><div class="feed">'
+   +(l.log.map(e=>'<div class="ev"><span class="t">'+new Date(e.ts*1000).toLocaleTimeString()+'</span><b class="e '+esc(e.event)+'">'+esc(e.event)+'</b><span>'+esc(e.detail)+'</span><span class="ag">'+esc(e.agent||'')+'</span></div>').join('')||'<div class="empty">No events yet.</div>')+'</div>';}
+
+function tabs(){$('#tabs').innerHTML=TABS.map(t=>'<button class="tb '+(t===tab?'on':'')+'" onclick="setTab(\''+t+'\')">'+t+'</button>').join('');}
+function setTab(t){tab=t;tabs();renderTab();}
+async function renderTab(){const el=$('#tab');
+  if(tab==='History'){el.innerHTML=table(['Batch','Status','Agent','Risk','Actions','When',''],(S.batches||[]).map(x=>['#'+x.id,'<span class="pill" style="--c:'+(COL[x.status]||'#64748b')+'">'+x.status+'</span>',esc(x.agent),x.risk,x.n,ago(x.created),x.status==='committed'?'<button class="sm" onclick="act(\'revert\',{batch:'+x.id+'})">Revert</button><button class="sm" onclick="capsave('+x.id+')">Save as capsule</button>':'']));}
+  else if(tab==='Agents'){el.innerHTML=table(['Agent','Batches','Actions','Committed','Failed (auto-recovered)'],(S.st.agents||[]).map(a=>['<b>'+esc(a.agent)+'</b>',a.batches,a.actions,a.committed,a.failed]));}
+  else if(tab==='Capsules'){const c=await api('/api/v1/capsules');el.innerHTML=(c.length?table(['Capsule','Actions','Runs',''],c.map(x=>['<b>'+esc(x.name)+'</b>',x.actions,x.runs,'<button class="sm" onclick="act(\'caprun\',{name:\''+esc(x.name)+'\'})">Run (no LLM)</button>'])):'<div class="empty">No capsules yet. Commit a batch, then click "Save as capsule" in History. A capsule replays a verified plan with zero LLM calls; a human still approves it.</div>');}
+  else if(tab==='Tools'){const t=await api('/api/v1/tools');el.innerHTML=table(['Tool','Effect','Risk','Description'],t.map(x=>['<code>'+esc(x.name)+'</code>','<span class="pill '+(x.effect==='irreversible'?'bad':x.effect==='read'?'ok':'')+'">'+x.effect+'</span>',x.risk,esc(x.description)]));}
+  else{const d=await api('/api/v1/data');el.innerHTML=d.files!==undefined?'<div class="two"><div><h3>Files</h3><pre>'+esc(d.files)+'</pre></div><div><h3>Calendar</h3><pre>'+esc(d.calendar)+'</pre></div></div>':'<div class="empty">No built-in demo data (upstream servers only).</div>';}}
+
+async function refresh(force){
+  try{const r=await Promise.all([api('/api/v1/stats'),api('/api/v1/pending'),api('/api/v1/log'),api('/api/v1/batches')]);
+    const st=r[0],pend=r[1],log=r[2];S={st:st,batches:r[3]};kpis(st);
+    const k=JSON.stringify(pend);if(force||k!==lastPend){lastPend=k;queue(pend);}
+    const ef=Object.assign({},st.effects,{read:st.summary.reads});
+    $('#charts').innerHTML='<h3>Recent batches (by outcome)</h3>'+bars(st.recent)+'<h3 style="margin-top:12px">Action mix</h3>'+donut(ef);
+    feed(log);$('#live').textContent='live · '+new Date().toLocaleTimeString();renderTab();
+  }catch(e){$('#live').textContent='offline';}}
+tabs();refresh(true);setInterval(refresh,2500);
+</script></body></html>

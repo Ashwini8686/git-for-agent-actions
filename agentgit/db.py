@@ -14,7 +14,12 @@ CREATE TABLE IF NOT EXISTS actions(
   UNIQUE(batch_id, seq));
 CREATE TABLE IF NOT EXISTS log(
   id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL, batch_id INTEGER, event TEXT, detail TEXT);
+CREATE TABLE IF NOT EXISTS capsules(
+  name TEXT PRIMARY KEY, actions TEXT NOT NULL, created REAL, runs INTEGER DEFAULT 0);
 """
+MIGRATIONS = [("batches", "agent", "TEXT DEFAULT 'unknown'"), ("batches", "risk", "INTEGER DEFAULT 0"),
+              ("actions", "risk", "INTEGER DEFAULT 0"), ("log", "agent", "TEXT"),
+              ("log", "prev", "TEXT"), ("log", "hash", "TEXT")]
 
 
 def home() -> Path:
@@ -25,7 +30,11 @@ def home() -> Path:
 
 
 def connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(home() / "agentgit.db")
+    conn = sqlite3.connect(home() / "agentgit.db", timeout=15)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    for table, col, decl in MIGRATIONS:
+        if col not in [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+    conn.commit()
     return conn

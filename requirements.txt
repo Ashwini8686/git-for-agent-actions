@@ -1,3 +1,1 @@
-# Core engine, CLI, web UI and tests use only the Python standard library.
-# Only the MCP gateway needs this:
-mcp[cli]>=1.2
+# AgentGit has no third-party dependencies: Python 3.9+ standard library only.
