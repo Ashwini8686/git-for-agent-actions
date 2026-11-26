@@ -1,107 +1,143 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Git for Agent Actions</title>
+<title>AgentGit</title>
 <style>
-:root{--bg:#0b1220;--card:#111a2e;--line:#1f2b45;--tx:#e6edf7;--mut:#8aa0c0;--ok:#22c55e;--warn:#f59e0b;--bad:#ef4444;--acc:#38bdf8;--vio:#a78bfa}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 Segoe UI,Calibri,Arial,sans-serif}
-header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--line);background:#0e1730}
-h1{font-size:19px;margin:0}h1 small{display:block;color:var(--mut);font-weight:400;font-size:12px}
-#live{color:var(--ok);font-size:12px}#live:before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px}
-main{padding:18px 24px;max-width:1400px;margin:auto}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:14px}
-.kpi{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:10px;padding:12px 14px}
-.kpi .v{font-size:26px;font-weight:700}.kpi .l{color:var(--mut);font-size:12px}
-.grid{display:grid;grid-template-columns:5fr 4fr 4fr;gap:12px;margin-bottom:14px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
-h3{margin:0 0 10px;font-size:14px;display:flex;align-items:center;gap:8px;justify-content:space-between}
-.meta{color:var(--mut);font-size:12px;margin-bottom:8px}.empty{color:var(--mut);padding:18px 0}
-.acts{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;max-height:260px;overflow:auto}
-.act{display:flex;align-items:center;gap:8px;background:#0c1526;border:1px solid var(--line);border-radius:8px;padding:7px 9px}
-.act .d{flex:1}.sym{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;font-weight:700;background:#16335a}
-.sym.sirreversible{background:#5a1f1f}.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;background:#1b2a4a;color:var(--mut);border:1px solid transparent}
-.pill.ok{background:#12351f;color:var(--ok)}.pill.warn{background:#3a2c0b;color:var(--warn)}.pill.bad{background:#3d1717;color:var(--bad)}.pill[style]{background:transparent;color:var(--c);border-color:var(--c)}
-.ctl{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0;color:var(--mut)}.chaos input{width:54px;background:#0c1526;color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:3px}
-.btn{border:0;border-radius:8px;color:#fff;padding:9px 16px;font-size:14px;cursor:pointer;margin-right:8px}.ok{--b:var(--ok)}.no{--b:var(--bad)}.st{--b:var(--acc)}.btn{background:var(--b)}
-.sm{background:#1b2a4a;color:var(--tx);border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;margin-right:6px}
-.svg{width:100%;height:auto}.ax{fill:var(--mut);font-size:9px}.big{fill:var(--tx);font-size:20px;font-weight:700}.dn{max-width:150px;display:block;margin:auto}
-.legend{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;color:var(--mut);font-size:12px}.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.feed{max-height:330px;overflow:auto}.ev{display:grid;grid-template-columns:62px 82px 1fr;gap:6px;padding:5px 0;border-bottom:1px solid var(--line);font-size:12px}
-.ev .t,.ev .ag{color:var(--mut)}.ev .ag{grid-column:3;font-size:11px}.e{color:var(--acc)}.e.committed{color:var(--ok)}.e.rolled_back,.e.blocked{color:var(--bad)}.e.staged{color:var(--warn)}
-.tabs{display:flex;gap:6px;margin-bottom:10px}.tb{background:transparent;border:1px solid var(--line);color:var(--mut);padding:6px 14px;border-radius:8px;cursor:pointer}.tb.on{background:#16335a;color:var(--tx)}
-table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line)}th{color:var(--mut);font-weight:500;font-size:12px}
-pre{background:#0c1526;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;margin:0}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-#toast{position:fixed;bottom:20px;right:20px;background:#16335a;border:1px solid var(--acc);padding:12px 16px;border-radius:10px;opacity:0;transition:.3s;max-width:420px}#toast.show{opacity:1}
-@media(max-width:1000px){.kpis{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}.two{grid-template-columns:1fr}}
+:root{--bg:#07060d;--glass:rgba(255,255,255,.05);--edge:rgba(255,255,255,.09);--tx:#ece9f6;--mut:#8f8aa8;--vio:#8b5cf6;--vio2:#6d28d9;--ok:#34d399;--warn:#fbbf24;--bad:#f43f5e;--blue:#60a5fa;--mono:Consolas,"Cascadia Mono",monospace}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;color:var(--tx);font:14px/1.5 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;background:radial-gradient(900px 500px at 78% -10%,rgba(109,40,217,.28),transparent 60%),radial-gradient(700px 400px at 0% 100%,rgba(244,63,94,.10),transparent 60%),var(--bg);display:flex}
+button{font:inherit;color:inherit;cursor:pointer}:focus-visible{outline:2px solid var(--vio);outline-offset:2px}
+.glass{background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:16px}
+nav{width:68px;margin:14px 0 14px 14px;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
+nav .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--vio),var(--vio2));display:grid;place-items:center;margin-bottom:10px;font-weight:700}
+nav button{width:44px;height:44px;border:0;background:none;border-radius:12px;color:var(--mut);display:grid;place-items:center;position:relative}
+nav button:hover{color:var(--tx);background:var(--glass)}nav button.on{color:#fff;background:rgba(139,92,246,.22);box-shadow:inset 0 0 0 1px rgba(139,92,246,.5)}
+nav button svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav .badge{position:absolute;top:5px;right:5px;min-width:16px;height:16px;border-radius:8px;background:var(--warn);color:#000;font-size:10px;font-weight:700;display:none;place-items:center;padding:0 4px}
+nav button:hover::after{content:attr(data-tip);position:absolute;left:54px;background:#17142b;border:1px solid var(--edge);padding:3px 9px;border-radius:8px;font-size:12px;white-space:nowrap;z-index:9}
+main{flex:1;min-width:0;padding:20px 26px;overflow:auto}
+.top{display:flex;align-items:center;gap:14px;margin-bottom:18px}.top h1{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em}.top .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--edge);border-radius:99px;padding:3px 11px;font-size:12px;color:var(--mut)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--ok)}.pill.down i{background:var(--bad)}.pill.down{color:var(--bad)}
+.ghost{background:var(--glass);border:1px solid var(--edge);border-radius:10px;padding:6px 13px}.ghost:hover{border-color:var(--vio)}
+#problem{display:none;border-color:rgba(244,63,94,.5);background:rgba(244,63,94,.1);padding:12px 16px;margin-bottom:16px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.stat{padding:20px 22px}.stat .v{font-size:46px;line-height:1;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.stat .l{color:var(--mut);margin-top:10px}.stat .h{font-size:12px;margin-top:2px;color:var(--mut)}
+.cols{display:grid;grid-template-columns:3fr 2fr;gap:14px}.card{padding:18px 20px}.card h2{margin:0 0 12px;font-size:15px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.empty{color:var(--mut);padding:14px 0}
+.diff{border:1px solid var(--edge);border-radius:12px;overflow:hidden;background:rgba(0,0,0,.28);margin-bottom:12px}
+.diff .hd{display:flex;justify-content:space-between;gap:10px;padding:9px 14px;border-bottom:1px solid var(--edge);font-size:12.5px;color:var(--mut)}
+.diff .ln{display:grid;grid-template-columns:34px 1fr auto;font-family:var(--mono);font-size:12.5px;border-left:3px solid var(--c)}.diff .ln:nth-child(even){background:rgba(255,255,255,.025)}
+.ln .g{padding:6px 0;text-align:center;color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent)}.ln .d{padding:6px 12px}.ln .e{padding:6px 12px;color:var(--c);font-size:11.5px}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.commit{border:0;border-radius:12px;padding:10px 22px;font-weight:600;color:#fff;background:linear-gradient(135deg,#a78bfa,var(--vio) 45%,var(--vio2));box-shadow:0 8px 24px -8px rgba(139,92,246,.7)}.commit:hover{filter:brightness(1.12)}
+.reject{border:1px solid var(--edge);background:none;border-radius:12px;padding:10px 18px;color:var(--mut)}.reject:hover{color:var(--tx);border-color:var(--mut)}
+.rollback{border:1px solid rgba(244,63,94,.55);background:rgba(244,63,94,.1);color:#fda4af;border-radius:9px;padding:4px 12px;font-size:12.5px}.rollback:hover{background:rgba(244,63,94,.22)}
+.lab{color:var(--mut);font-size:12.5px;display:flex;gap:14px;flex-wrap:wrap}.lab input[type=number]{width:52px;background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:7px;color:var(--tx);padding:3px 6px}
+.risk{border-radius:99px;padding:1px 10px;font-size:12px;border:1px solid var(--c);color:var(--c)}
+.tl{position:relative;margin-left:8px;padding-left:26px}.tl::before{content:"";position:absolute;left:6px;top:8px;bottom:8px;width:2px;background:linear-gradient(var(--edge),transparent)}
+.tl .it{position:relative;padding:0 0 18px}.tl .it::before{content:"";position:absolute;left:-26px;top:5px;width:14px;height:14px;border-radius:50%;background:var(--bg);border:3px solid var(--c)}
+.tl .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tl .sub{color:var(--mut);font-size:12.5px}.tl b{font-weight:600}
+.sm{background:var(--glass);border:1px solid var(--edge);border-radius:9px;padding:4px 12px;font-size:12.5px}.sm:hover{border-color:var(--vio)}
+.prov{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}.pc{padding:18px 20px}.pc h3{margin:0;font-size:16px;font-weight:600}.pc .n{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.pc .n b{font-size:22px;display:block;font-weight:600}.pc .n span{color:var(--mut);font-size:12px}
+code,pre{font-family:var(--mono);font-size:12px}pre{background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:10px;padding:10px;margin:0;overflow:auto}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--edge)}th{color:var(--mut);font-weight:500;font-size:12.5px}
+.bars{display:flex;align-items:flex-end;gap:6px;height:90px}.bars i{flex:1;border-radius:5px 5px 2px 2px;background:var(--c);min-height:5px}
+#toast{position:fixed;right:22px;bottom:22px;max-width:420px;padding:12px 16px;border-radius:12px;background:#17142b;border:1px solid var(--vio);opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;z-index:20}#toast.show{opacity:1;transform:none}
+dialog{border:1px solid rgba(244,63,94,.5);background:#120d1c;color:var(--tx);border-radius:16px;padding:22px 24px;max-width:400px}dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(4px)}dialog h3{margin:0 0 8px}dialog p{color:var(--mut);margin:0 0 18px}dialog .actions{justify-content:flex-end}
+.danger{border:0;border-radius:10px;padding:9px 18px;color:#fff;font-weight:600;background:var(--bad)}
+/* floating widget: compact translucent rectangle */
+body.widget{background:rgba(10,8,20,.72);display:block;overflow:hidden}body.widget nav,body.widget .full{display:none}body.widget main{padding:12px}
+.w{display:flex;flex-direction:column;gap:9px}.w .r{display:flex;gap:8px;align-items:center}.w input[type=text]{flex:1;min-width:0;background:rgba(0,0,0,.35);border:1px solid var(--edge);border-radius:10px;color:var(--tx);padding:8px 11px;font:inherit}
+.w .st{font-size:12.5px;color:var(--mut);display:flex;justify-content:space-between}.w .pend{max-height:84px;overflow:auto}.w .commit,.w .reject{padding:6px 14px;font-size:13px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body>
-<header><h1>Git for Agent Actions<small>A transaction layer for any AI agent: stage, review, commit, verify, revert</small></h1><div id="live">connecting</div></header>
+<nav class="glass full" id="nav"></nav>
 <main>
-<section class="kpis" id="kpis"></section>
-<section class="grid"><div class="card" id="queue"></div><div class="card" id="charts"></div><div class="card" id="feed"></div></section>
-<section class="card"><div class="tabs" id="tabs"></div><div id="tab"></div></section>
-</main><div id="toast"></div>
+<div id="problem" class="glass" role="alert"></div>
+<div id="view"></div>
+</main>
+<dialog id="dlg"><h3 id="dt"></h3><p id="dp"></p><div class="actions"><button class="reject" id="dn">Cancel</button><button class="danger" id="dy">Roll back</button></div></dialog>
+<div id="toast"></div>
 <script>
-const $=s=>document.querySelector(s);
+const $=s=>document.querySelector(s),WIDGET=location.pathname==='/widget';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function api(path,body){const o=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};const r=await fetch(path,o);return r.json();}
-function toast(m){const t=$('#toast');t.textContent=m;t.className='show';clearTimeout(toast.t);toast.t=setTimeout(()=>{t.className=''},4500);}
-const COL={committed:'#22c55e',rolled_back:'#ef4444',needs_attention:'#ef4444',staging:'#f59e0b',rejected:'#64748b',reverted:'#38bdf8',committing:'#a78bfa',partly_reverted:'#38bdf8'};
-const TABS=['History','Agents','Capsules','Tools','Data'];
-let tab='History',S={},lastPend=null;
-const risk=r=>r<=3?['Low','ok']:r<=8?['Medium','warn']:['High','bad'];
-const ago=ts=>{const s=Math.max(0,Date.now()/1000-ts);return s<60?Math.floor(s)+'s ago':s<3600?Math.floor(s/60)+'m ago':Math.floor(s/3600)+'h ago';};
+const ICON={overview:'<path d="M4 13h6V4H4zM14 20h6V11h-6zM14 4v4h6V4zM4 20h6v-4H4z"/>',approvals:'<path d="M9 12l2 2 4-4"/><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',history:'<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>',connections:'<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.3 11l7.4-4M8.3 13l7.4 4"/>',capsules:'<rect x="3" y="8" width="18" height="8" rx="4"/><path d="M12 8v8"/>',tools:'<path d="M14 6a4 4 0 005 5l-9 9a2 2 0 01-3-3l9-9z"/>',data:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3 3 7 3s7-1.3 7-3v-6"/>'};
+const VIEWS=['overview','approvals','history','connections','capsules','tools','data'];
+let view=(location.hash||'#overview').slice(1);if(!VIEWS.includes(view))view='overview';
+let S={},P={batch:null,actions:[]},L={log:[],chain:{}},B=[],C=null,lastKey='';
+async function api(path,body){const o=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};let r;try{r=await fetch(path,o)}catch(e){throw{offline:true}}
+ let d;try{d=await r.json()}catch(e){throw{message:'HTTP '+r.status+' from the server'}}if(!r.ok&&body===undefined)throw{message:d.error||('HTTP '+r.status)};return d}
+async function post(p,b){try{return await api(p,b)}catch(e){problem(e);return{ok:false,error:e.offline?'The server is not running':e.message}}}
+function problem(e){const el=$('#problem');if(!e){el.style.display='none';return}let t,x;
+ if(location.protocol==='file:'){t='This page was opened as a file';x='Start the server (double-click start.bat), then open <code>http://127.0.0.1:8765</code>.'}
+ else if(e.offline){t='The server is not running';x='Start it again (double-click start.bat) and keep that window open. This page reconnects by itself. Stuck? Run <code>python -m agentgit.cli doctor</code>.'}
+ else{t='The server reported an error';x=esc(e.message||e)+'<br>Run <code>python -m agentgit.cli doctor</code> in the project folder.'}
+ el.innerHTML='<b>'+t+'</b><br>'+x;el.style.display='block'}
+function toast(m){const t=$('#toast');t.textContent=m;t.className='show';clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='',4500)}
+const COL={committed:'#34d399',rolled_back:'#f43f5e',needs_attention:'#f43f5e',staging:'#fbbf24',rejected:'#8f8aa8',reverted:'#60a5fa',committing:'#a78bfa',partly_reverted:'#60a5fa'};
+const EFF={reversible:'#fbbf24',irreversible:'#f43f5e',read:'#34d399'};
+const NAME={committed:'Committed',rolled_back:'Auto rolled back',needs_attention:'Needs attention',staging:'Waiting for approval',rejected:'Rejected',reverted:'Rolled back by you',committing:'Committing',partly_reverted:'Partly rolled back'};
+const ago=ts=>{const s=Math.max(0,Date.now()/1000-ts);return s<60?Math.floor(s)+'s ago':s<3600?Math.floor(s/60)+'m ago':s<86400?Math.floor(s/3600)+'h ago':Math.floor(s/86400)+'d ago'};
+const riskOf=r=>r<=3?['Low','#34d399']:r<=8?['Medium','#fbbf24']:['High','#f43f5e'];
 const table=(h,rows)=>'<table><tr>'+h.map(x=>'<th>'+x+'</th>').join('')+'</tr>'+rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</table>';
 
-function kpis(s){const m=s.summary;
-  const items=[['Pending actions',m.pending_actions,'#f59e0b'],['Committed batches',m.committed,'#22c55e'],['Auto-recovered',m.rolled_back,'#ef4444'],['Reverted',m.reverted,'#38bdf8'],['Blocked by policy',m.blocked,'#a78bfa'],['Commit success',m.success_rate==null?'n/a':m.success_rate+'%','#22c55e']];
-  $('#kpis').innerHTML=items.map(i=>'<div class="kpi" style="--c:'+i[2]+'"><div class="v">'+i[1]+'</div><div class="l">'+i[0]+'</div></div>').join('');}
+function nav(){$('#nav').innerHTML='<div class="logo">A</div>'+VIEWS.map(v=>'<button data-tip="'+v[0].toUpperCase()+v.slice(1)+'" aria-label="'+v+'" class="'+(v===view?'on':'')+'" onclick="go(\''+v+'\')"><svg viewBox="0 0 24 24">'+ICON[v]+'</svg>'+(v==='approvals'&&P.batch?'<span class="badge" style="display:grid">'+P.actions.length+'</span>':'')+'</button>').join('')}
+function go(v){view=v;location.hash=v;nav();render()}
 
-function queue(p){const el=$('#queue'),b=p.batch;
-  if(!b){el.innerHTML='<h3>Approval queue</h3><div class="empty">No agent is waiting for approval.</div><button class="btn st" onclick="act(\'demo\')">Simulate an agent request</button><button class="sm" onclick="act(\'seed\')">Reset demo data</button>';return;}
-  const rk=risk(b.risk),irr=p.actions.some(a=>a.effect==='irreversible');
-  el.innerHTML='<h3>Approval queue <span class="pill '+rk[1]+'">risk '+b.risk+' · '+rk[0]+'</span></h3>'
-   +'<div class="meta">Batch #'+b.id+' proposed by <b>'+esc(b.agent)+'</b>. Nothing has changed yet.</div>'
-   +'<div class="acts">'+p.actions.map(a=>'<div class="act"><span class="sym s'+a.effect+'">'+esc(a.symbol)+'</span><span class="d">'+esc(a.desc)+'</span><span class="pill '+(a.effect==='irreversible'?'bad':'')+'">'+a.effect+'</span></div>').join('')+'</div>'
-   +'<div class="ctl">'+(irr?'<label><input type="checkbox" id="irr"> I confirm the irreversible actions</label>':'')
-   +'<label class="chaos">Chaos lab: fail step <input type="number" id="failat" min="1" placeholder="-"></label></div>'
-   +'<button class="btn ok" onclick="approve('+b.id+')">Approve &amp; commit</button><button class="btn no" onclick="act(\'reject\',{batch:'+b.id+'})">Reject</button>';}
+function diffCard(compact){const b=P.batch;if(!b)return'<div class="empty">Nothing is waiting. When an agent proposes changes, they appear here as a diff and nothing runs until you approve.</div>';
+ const rk=riskOf(b.risk),irr=P.actions.some(a=>a.effect==='irreversible');
+ return '<div class="diff"><div class="hd"><span>Batch #'+b.id+' from <b style="color:var(--tx)">'+esc(b.agent)+'</b></span><span class="risk" style="--c:'+rk[1]+'">risk '+b.risk+' · '+rk[0]+'</span></div>'
+ +P.actions.map(a=>'<div class="ln" style="--c:'+(EFF[a.effect]||'#a78bfa')+'"><span class="g">'+esc(a.symbol)+'</span><span class="d">'+esc(a.desc)+'</span><span class="e">'+a.effect+'</span></div>').join('')+'</div>'
+ +'<div class="actions"><button class="commit" onclick="approve('+b.id+')">Commit '+P.actions.length+' changes</button><button class="reject" onclick="rej('+b.id+')">Reject</button></div>'
+ +(compact?'':'<div class="lab" style="margin-top:12px">'+(irr?'<label><input type="checkbox" id="irr"> I confirm the irreversible changes</label>':'')+'<label>Chaos lab: fail at step <input type="number" id="failat" min="1" placeholder="-"></label></div>')}
 
-async function approve(id){const fa=$('#failat').value,irr=$('#irr');
-  const r=await api('/api/v1/approve',{batch:id,confirm_irreversible:!!(irr&&irr.checked),fail_at:fa?parseInt(fa,10):null});
-  toast(r.ok?'Committed and verified: '+r.applied+' actions':(r.rolled_back?'Rolled back to the starting state. '+r.error:(r.error||'Failed')));refresh(true);}
-async function act(kind,body){const map={demo:'/api/v1/demo',reject:'/api/v1/reject',revert:'/api/v1/revert',seed:'/api/v1/seed',caprun:'/api/v1/capsules/run',capsave:'/api/v1/capsules'};
-  const r=await api(map[kind],body||{});toast(r.error||(r.ok===false?'Not done':'Done'));refresh(true);}
-function capsave(id){const n=prompt('Capsule name?','my-routine');if(n)act('capsave',{batch:id,name:n});}
+async function approve(id){const fa=$('#failat'),irr=$('#irr');
+ const r=await post('/api/v1/approve',{batch:id,confirm_irreversible:!!(irr&&irr.checked),fail_at:fa&&fa.value?parseInt(fa.value,10):null});
+ toast(r.ok?'Committed and verified: '+r.applied+' actions':(r.rolled_back?'Rolled back to the starting state. '+r.error:(r.error||'Failed')));refresh(true)}
+async function rej(id){const r=await post('/api/v1/reject',{batch:id});toast(r.error||'Rejected. Nothing changed.');refresh(true)}
+function ask(title,text,yes){$('#dt').textContent=title;$('#dp').textContent=text;const d=$('#dlg');$('#dn').onclick=()=>d.close();$('#dy').onclick=()=>{d.close();yes()};d.showModal()}
+function rollback(id){ask('Roll back batch #'+id+'?','This undoes every change in the batch and checks the result. The record stays in History.',async()=>{const r=await post('/api/v1/revert',{batch:id});toast(r.error||'Rolled back batch #'+id);refresh(true)})}
+async function capsave(id){const n=prompt('Capsule name?','my-routine');if(n){const r=await post('/api/v1/capsules',{batch:id,name:n});toast(r.error||'Saved capsule '+n);refresh(true)}}
+async function act(p,b,m){const r=await post(p,b||{});toast(r.error||m||'Done');refresh(true)}
+async function sendAsk(inp){const v=inp.value.trim();if(!v)return;const r=await post('/api/v1/ask',{text:v});if(r.ok)inp.value='';toast(r.error||r.message);refresh(true)}
 
-function bars(rec){const W=300,H=100,bw=W/Math.max(rec.length,1),mx=Math.max(1,...rec.map(r=>r.n));
-  if(!rec.length)return '<div class="empty">No batches yet.</div>';
-  return '<svg viewBox="0 0 '+W+' '+(H+16)+'" class="svg">'+rec.map((r,i)=>{const h=Math.max(4,r.n/mx*H);
-    return '<rect x="'+(i*bw+3)+'" y="'+(H-h)+'" width="'+(bw-6)+'" height="'+h+'" rx="3" fill="'+(COL[r.status]||'#64748b')+'"><title>#'+r.id+' '+r.status+', '+r.n+' actions</title></rect><text x="'+(i*bw+bw/2)+'" y="'+(H+12)+'" text-anchor="middle" class="ax">'+r.id+'</text>';}).join('')+'</svg>';}
-function donut(ef){const cols={reversible:'#38bdf8',irreversible:'#ef4444',read:'#22c55e'},tot=Object.values(ef).reduce((a,b)=>a+b,0);
-  if(!tot)return '<div class="empty">No actions yet.</div>';
-  const R=42,C=2*Math.PI*R;let off=0;
-  const segs=Object.keys(ef).filter(k=>ef[k]>0).map(k=>{const len=ef[k]/tot*C;const s='<circle r="'+R+'" cx="60" cy="60" fill="none" stroke="'+(cols[k]||'#a78bfa')+'" stroke-width="16" stroke-dasharray="'+len+' '+(C-len)+'" stroke-dashoffset="'+(-off)+'" transform="rotate(-90 60 60)"><title>'+k+': '+ef[k]+'</title></circle>';off+=len;return s;}).join('');
-  return '<svg viewBox="0 0 120 120" class="svg dn">'+segs+'<text x="60" y="58" text-anchor="middle" class="big">'+tot+'</text><text x="60" y="74" text-anchor="middle" class="ax">actions</text></svg><div class="legend">'+Object.keys(ef).map(k=>'<span><i style="background:'+(cols[k]||'#a78bfa')+'"></i>'+k+' '+ef[k]+'</span>').join('')+'</div>';}
+function stat(v,l,h,c){return'<div class="stat glass"><div class="v" style="color:'+c+'">'+v+'</div><div class="l">'+l+'</div><div class="h">'+h+'</div></div>'}
+function timeline(items){return items.length?'<div class="tl">'+items.map(x=>'<div class="it" style="--c:'+(COL[x.status]||'#8f8aa8')+'"><div class="row"><b>Batch #'+x.id+'</b><span class="risk" style="--c:'+(COL[x.status]||'#8f8aa8')+'">'+(NAME[x.status]||x.status)+'</span>'
+ +(x.status==='committed'?'<button class="rollback" onclick="rollback('+x.id+')">Roll back</button><button class="sm" onclick="capsave('+x.id+')">Save as capsule</button>':'')+'</div><div class="sub">'+esc(x.agent)+' · '+x.n+' actions · risk '+x.risk+' · '+ago(x.created)+'</div></div>').join('')+'</div>':'<div class="empty">No history yet.</div>'}
+function alerts(){const l=L.log.filter(e=>['rolled_back','blocked','tamper'].includes(e.event)).slice(0,4);return(L.chain.ok===false?'<div class="risk" style="--c:#f43f5e;margin-bottom:8px">Audit log tampered at #'+L.chain.broken_at+'</div>':'')+(l.length?l.map(e=>'<div class="sub" style="margin-bottom:6px"><b style="color:var(--bad)">'+esc(e.event)+'</b> '+esc(e.detail)+'</div>').join(''):'<div class="empty">No problems. Every failure so far was rolled back.</div>')}
 
-function feed(l){const ch=l.chain;
-  $('#feed').innerHTML='<h3>Live audit feed <span class="pill '+(ch.ok?'ok':'bad')+'" title="Every entry hashes the previous one">'+(ch.ok?'chain verified ✓ '+ch.entries:'TAMPERED at #'+ch.broken_at)+'</span></h3><div class="feed">'
-   +(l.log.map(e=>'<div class="ev"><span class="t">'+new Date(e.ts*1000).toLocaleTimeString()+'</span><b class="e '+esc(e.event)+'">'+esc(e.event)+'</b><span>'+esc(e.detail)+'</span><span class="ag">'+esc(e.agent||'')+'</span></div>').join('')||'<div class="empty">No events yet.</div>')+'</div>';}
+function widgetView(){const n=P.actions.length;return '<div class="w"><div class="st"><span>'+(n?n+' change'+(n>1?'s':'')+' waiting':'Nothing waiting')+'</span><span id="lv"></span></div>'
+ +'<div class="r"><input type="text" id="wq" placeholder="move a.pdf to Study/" aria-label="Request" onkeydown="if(event.key===\'Enter\')sendAsk(this)"><button class="commit" style="padding:7px 14px" onclick="sendAsk($(\'#wq\'))">Send</button></div>'
+ +(n?'<div class="pend diff">'+P.actions.map(a=>'<div class="ln" style="--c:'+(EFF[a.effect]||'#a78bfa')+'"><span class="g">'+esc(a.symbol)+'</span><span class="d">'+esc(a.desc)+'</span><span class="e"></span></div>').join('')+'</div><div class="r"><button class="commit" onclick="approve('+P.batch.id+')">Commit</button><button class="reject" onclick="rej('+P.batch.id+')">Reject</button></div>':'')+'</div>'}
 
-function tabs(){$('#tabs').innerHTML=TABS.map(t=>'<button class="tb '+(t===tab?'on':'')+'" onclick="setTab(\''+t+'\')">'+t+'</button>').join('');}
-function setTab(t){tab=t;tabs();renderTab();}
-async function renderTab(){const el=$('#tab');
-  if(tab==='History'){el.innerHTML=table(['Batch','Status','Agent','Risk','Actions','When',''],(S.batches||[]).map(x=>['#'+x.id,'<span class="pill" style="--c:'+(COL[x.status]||'#64748b')+'">'+x.status+'</span>',esc(x.agent),x.risk,x.n,ago(x.created),x.status==='committed'?'<button class="sm" onclick="act(\'revert\',{batch:'+x.id+'})">Revert</button><button class="sm" onclick="capsave('+x.id+')">Save as capsule</button>':'']));}
-  else if(tab==='Agents'){el.innerHTML=table(['Agent','Batches','Actions','Committed','Failed (auto-recovered)'],(S.st.agents||[]).map(a=>['<b>'+esc(a.agent)+'</b>',a.batches,a.actions,a.committed,a.failed]));}
-  else if(tab==='Capsules'){const c=await api('/api/v1/capsules');el.innerHTML=(c.length?table(['Capsule','Actions','Runs',''],c.map(x=>['<b>'+esc(x.name)+'</b>',x.actions,x.runs,'<button class="sm" onclick="act(\'caprun\',{name:\''+esc(x.name)+'\'})">Run (no LLM)</button>'])):'<div class="empty">No capsules yet. Commit a batch, then click "Save as capsule" in History. A capsule replays a verified plan with zero LLM calls; a human still approves it.</div>');}
-  else if(tab==='Tools'){const t=await api('/api/v1/tools');el.innerHTML=table(['Tool','Effect','Risk','Description'],t.map(x=>['<code>'+esc(x.name)+'</code>','<span class="pill '+(x.effect==='irreversible'?'bad':x.effect==='read'?'ok':'')+'">'+x.effect+'</span>',x.risk,esc(x.description)]));}
-  else{const d=await api('/api/v1/data');el.innerHTML=d.files!==undefined?'<div class="two"><div><h3>Files</h3><pre>'+esc(d.files)+'</pre></div><div><h3>Calendar</h3><pre>'+esc(d.calendar)+'</pre></div></div>':'<div class="empty">No built-in demo data (upstream servers only).</div>';}}
+function render(){const el=$('#view');if(WIDGET){const q=$('#wq'),keep=q?q.value:'';el.innerHTML=widgetView();if($('#wq')){$('#wq').value=keep;if(q&&document.activeElement===q)$('#wq').focus()}return}
+ const m=(S.summary||{}),T={overview:'Overview',approvals:'Approvals',history:'History',connections:'Agent connections',capsules:'Capsules',tools:'Tools',data:'Demo data'}[view];
+ let h='<div class="top"><h1>'+T+'</h1><span class="sp"></span><span class="pill" id="live"><i></i>live</span><button class="ghost" onclick="popout()">Pop out panel</button></div>';
+ if(view==='overview'){const rec=S.recent||[],mx=Math.max(1,...rec.map(r=>r.n));
+  h+='<div class="stats">'+stat(m.pending_actions??0,'Pending changes','waiting for you','#fbbf24')+stat(m.committed??0,'Verified commits','applied and checked','#a78bfa')+stat(m.rolled_back??0,'Auto-recovered','failed, then restored','#f43f5e')+stat(m.success_rate==null?'n/a':m.success_rate+'%','Commit success','of all attempts','#34d399')+'</div>'
+  +'<div class="cols"><div class="card glass"><h2>Pending changes</h2>'+diffCard(true)+'</div><div style="display:grid;gap:14px"><div class="card glass"><h2>Recent batches</h2>'+(rec.length?'<div class="bars">'+rec.map(r=>'<i style="--c:'+(COL[r.status]||'#8f8aa8')+';height:'+Math.max(6,r.n/mx*100)+'%" title="#'+r.id+' '+r.status+', '+r.n+' actions"></i>').join('')+'</div>':'<div class="empty">No batches yet.</div>')+'</div><div class="card glass"><h2>Alerts</h2>'+alerts()+'</div></div></div>'
+  +'<div class="card glass" style="margin-top:14px"><h2>Activity</h2>'+timeline(B.slice(0,5))+'</div>'}
+ else if(view==='approvals'){h+='<div class="card glass"><h2>Pending changes</h2>'+diffCard(false)+(P.batch?'':'<div class="actions"><button class="commit" onclick="act(\'/api/v1/demo\',{},\'Demo request staged\')">Simulate an agent request</button><button class="sm" onclick="act(\'/api/v1/seed\',{},\'Demo data reset\')">Reset demo data</button></div>')+'</div>'}
+ else if(view==='history'){h+='<div class="card glass"><h2>Activity history <span class="risk" style="--c:'+(L.chain.ok===false?'#f43f5e':'#34d399')+'">'+(L.chain.ok===false?'audit TAMPERED':'audit chain verified · '+(L.chain.entries||0))+'</span></h2>'+timeline(B)+'</div>'}
+ else if(view==='connections'){h+='<div class="prov">'+((C&&C.providers)||[]).map(p=>'<div class="pc glass"><h3>'+esc(p.name)+'</h3><div class="sub" style="color:var(--mut);margin-top:2px"><span class="risk" style="--c:'+(p.status==='active'?'#34d399':'#8f8aa8')+'">'+(p.status==='active'?'connected':'waiting for first request')+'</span></div><div class="n"><div><b>'+p.batches+'</b><span>batches</span></div><div><b>'+p.committed+'</b><span>committed</span></div><div><b>'+p.failed+'</b><span>recovered</span></div></div><div style="color:var(--mut);font-size:12.5px;margin-bottom:8px">'+(p.agents.length?esc(p.agents.join(', ')):'No agent seen yet')+'</div><pre>GET '+esc(location.origin+p.tools_url)+'\nPOST '+esc(location.origin)+'/api/v1/call</pre></div>').join('')+'</div>'}
+ else if(view==='capsules'){h+='<div class="card glass">'+(window.CAPS&&CAPS.length?table(['Capsule','Actions','Runs',''],CAPS.map(x=>['<b>'+esc(x.name)+'</b>',x.actions,x.runs,'<button class="sm" onclick="act(\'/api/v1/capsules/run\',{name:\''+esc(x.name)+'\'},\'Capsule staged for approval\')">Run (no LLM)</button>'])):'<div class="empty">No capsules yet. Commit a batch, then use Save as capsule in History. A capsule replays a verified plan with no LLM calls and still needs your approval.</div>')+'</div>'}
+ else if(view==='tools'){h+='<div class="card glass">'+table(['Tool','Effect','Risk','Description'],(window.TOOLS||[]).map(x=>['<code>'+esc(x.name)+'</code>','<span class="risk" style="--c:'+(EFF[x.effect]||'#a78bfa')+'">'+x.effect+'</span>',x.risk,esc(x.description)]))+'</div>'}
+ else{const d=window.DATA||{};h+='<div class="card glass">'+(d.files!==undefined?'<div class="cols" style="grid-template-columns:1fr 1fr"><div><h2>Files</h2><pre>'+esc(d.files)+'</pre></div><div><h2>Calendar</h2><pre>'+esc(d.calendar)+'</pre></div></div>':'<div class="empty">No built-in demo data.</div>')+'</div>'}
+ el.innerHTML=h;const lv=$('#live');if(lv&&window.liveAt)lv.innerHTML='<i></i>live '+liveAt}
 
-async function refresh(force){
-  try{const r=await Promise.all([api('/api/v1/stats'),api('/api/v1/pending'),api('/api/v1/log'),api('/api/v1/batches')]);
-    const st=r[0],pend=r[1],log=r[2];S={st:st,batches:r[3]};kpis(st);
-    const k=JSON.stringify(pend);if(force||k!==lastPend){lastPend=k;queue(pend);}
-    const ef=Object.assign({},st.effects,{read:st.summary.reads});
-    $('#charts').innerHTML='<h3>Recent batches (by outcome)</h3>'+bars(st.recent)+'<h3 style="margin-top:12px">Action mix</h3>'+donut(ef);
-    feed(log);$('#live').textContent='live · '+new Date().toLocaleTimeString();renderTab();
-  }catch(e){$('#live').textContent='offline';}}
-tabs();refresh(true);setInterval(refresh,2500);
+async function popout(){const url=location.origin+'/widget';
+ if(window.documentPictureInPicture){try{const w=await documentPictureInPicture.requestWindow({width:380,height:250});const f=w.document.createElement('iframe');f.src=url;f.style.cssText='border:0;width:100%;height:100%;position:fixed;inset:0';w.document.body.style.margin='0';w.document.body.append(f);return}catch(e){}}
+ window.open(url,'agentgit-panel','popup=yes,width=380,height=250')||toast('Allow pop-ups for this page, then try again.')}
+
+async function refresh(force){try{
+ const r=await Promise.all([api('/api/v1/stats'),api('/api/v1/pending'),api('/api/v1/log'),api('/api/v1/batches')]);
+ S=r[0];P=r[1];L=r[2];B=r[3];P.actions=P.actions||[];
+ if(view==='connections')C=await api('/api/v1/connections');if(view==='capsules')window.CAPS=await api('/api/v1/capsules');if(view==='tools'&&!window.TOOLS)window.TOOLS=await api('/api/v1/tools');if(view==='data')window.DATA=await api('/api/v1/data');
+ window.liveAt=new Date().toLocaleTimeString();problem(null);nav();
+ const key=JSON.stringify([S,P,L,B,C,window.CAPS,window.DATA]);const typing=document.activeElement&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName);
+ if(force||(key!==lastKey&&!typing)){lastKey=key;render()}
+ }catch(e){console.error(e);problem(e);const lv=$('#live');if(lv){lv.className='pill down';lv.textContent=e.offline?'offline':'error'}}}
+if(WIDGET)document.body.classList.add('widget');
+nav();refresh(true);setInterval(refresh,2500);
 </script></body></html>

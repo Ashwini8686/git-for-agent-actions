@@ -12,7 +12,9 @@ $env:AGENTGIT_HOME = "$PWD\data"
 python -m agentgit.cli web
 ```
 macOS/Linux: `python3 -m venv .venv && source .venv/bin/activate`, `export AGENTGIT_HOME=$PWD/data`, then the same last command.
-Open http://127.0.0.1:8765
+Open http://127.0.0.1:8765 and keep the terminal open; closing it stops the server.
+
+**Shortcut on Windows:** after cloning, just double-click `start.bat`. **Problems?** Run `python -m agentgit.cli doctor`.
 
 ## 6-step dashboard test
 1. Click **Simulate an agent request**. Check the Data tab: nothing changed yet. Note the risk badge.
@@ -24,7 +26,7 @@ Open http://127.0.0.1:8765
 
 ## Automated checks
 ```bash
-python -m unittest discover -s tests -v    # expect 22 tests, OK
+python -m unittest discover -s tests -v    # expect 25 tests, OK
 python scripts/chaos.py                    # expect gateway clean in every row
 python -m agentgit.cli audit               # expect ok: True
 ```

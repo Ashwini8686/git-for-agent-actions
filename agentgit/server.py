@@ -7,15 +7,43 @@ An agent token can never approve, reject or revert anything.
 import base64
 import hmac
 import json
-import time
+import os
+import threading
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
 from .adapters import AdapterError, Registry
-from .dashboard import DASH
+from pathlib import Path
+
+from . import ask as askmod
 from .db import connect, home
 from .engine import Engine, agent_message
 from .seed import WORKFLOW, seed
+
+PAGE = Path(__file__).with_name("dashboard.html")  # read on every request, so edits show on refresh
+
+PROVIDERS = [  # id, name, tool-schema format, words that identify an agent as belonging to it
+    ("claude", "Claude", "anthropic", ("claude", "anthropic")),
+    ("openai", "ChatGPT / OpenAI", "openai", ("gpt", "openai", "codex")),
+    ("mcp", "MCP clients", "mcp", ("mcp", "cursor", "cline")),
+    ("custom", "Custom HTTP agents", "mcp", ()),
+]
+
+
+def connections(agents):
+    """Group the agents seen so far under provider cards. Real counts only."""
+    out = [dict(id=i, name=n, format=f, tools_url=f"/api/v1/tools?format={f}", agents=[], batches=0, actions=0, committed=0, failed=0) for i, n, f, _ in PROVIDERS]
+    for a in agents:
+        name = (a.get("agent") or "").lower()
+        card = next((c for c, p in zip(out, PROVIDERS) if any(k in name for k in p[3])), out[-1])
+        card["agents"].append(a["agent"])
+        for k in ("batches", "actions", "committed", "failed"):
+            card[k] += a.get(k) or 0
+    for c in out:
+        c["status"] = "active" if c["agents"] else "waiting"
+    return out
+
 
 AGENT_ROUTES = {("POST", "/api/v1/call"), ("GET", "/api/v1/tools"), ("GET", "/api/v1/pending")}
 
@@ -79,23 +107,34 @@ class Handler(BaseHTTPRequestHandler):
             return
         if role == "agent" and (method, u.path) not in AGENT_ROUTES:
             return self._send({"ok": False, "error": "agent credentials cannot use this endpoint"}, 403)
-        eng = None
         try:
             body = self._body() if method == "POST" else {}
-            eng = Engine(self.server.reg, connect(), "human" if role == "admin" else body.get("agent") or "http-agent")
-            self._dispatch(eng, method, u.path, parse_qs(u.query), body, role)
+            with self.server.lock:  # one request at a time, so reset or approve never overlaps a read
+                eng = Engine(self.server.reg, connect(), "human" if role == "admin" else body.get("agent") or "http-agent")
+                try:
+                    self._dispatch(eng, method, u.path, parse_qs(u.query), body, role)
+                finally:
+                    eng.close()
         except (AdapterError, ValueError, KeyError) as e:
             self._send({"ok": False, "error": str(e)}, 400)
+        except (BrokenPipeError, ConnectionError):
+            pass  # the browser tab was closed or reloaded mid-reply
         except Exception as e:
+            print(f"Error on {method} {u.path}: {type(e).__name__}: {e}", flush=True)
             self._send({"ok": False, "error": f"{type(e).__name__}: {e}"}, 500)
-        finally:
-            if eng:
-                eng.close()
 
     def _dispatch(self, eng, method, path, q, body, role):
         reg, g = self.server.reg, (method == "GET")
-        if g and path == "/":
-            return self._send(DASH, 200, "text/html")
+        if g and path in ("/", "/widget"):
+            return self._send(PAGE.read_text(encoding="utf-8"), 200, "text/html")
+        if g and path == "/api/v1/connections":
+            return self._send({"providers": connections(eng.stats().get("agents") or [])})
+        if method == "POST" and path == "/api/v1/ask":
+            parsed = askmod.parse(body.get("text", ""))
+            if not parsed:
+                return self._send({"ok": False, "error": "I did not understand that. " + askmod.HELP})
+            r = eng.stage(parsed[0], parsed[1], "floating-panel")
+            return self._send({"ok": True, "message": "Staged for your approval. Nothing has changed yet.", "tool": parsed[0], **r})
         if g and path == "/api/v1/stats":
             return self._send(eng.stats())
         if g and path == "/api/v1/pending":
@@ -131,7 +170,6 @@ class Handler(BaseHTTPRequestHandler):
                 eng.stage(t, a, "demo-agent")
             return self._send({"ok": True, "staged": len(WORKFLOW)})
         if method == "POST" and path == "/api/v1/seed":
-            eng.close()
             seed()
             return self._send({"ok": True})
         self._send({"ok": False, "error": "not found"}, 404)
@@ -140,10 +178,16 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class Server(ThreadingHTTPServer):
+    # On Windows, address reuse lets two copies share one port and the browser may reach the old one.
+    allow_reuse_address = os.name != "nt"
+
+
 def make_server(host="127.0.0.1", port=8765, admin_token=None, agent_token=None):
     if host not in ("127.0.0.1", "localhost") and not admin_token:
         raise SystemExit("Refusing to listen on the network without --admin-token.")
-    srv = ThreadingHTTPServer((host, port), Handler)
+    srv = Server((host, port), Handler)
+    srv.lock = threading.Lock()
     srv.admin_token, srv.agent_token = admin_token, agent_token
     srv.reg = Registry(home())
     if not (home() / "calendar.json").exists() and srv.reg.cfg.get("builtin", True):
@@ -152,10 +196,21 @@ def make_server(host="127.0.0.1", port=8765, admin_token=None, agent_token=None)
     return srv
 
 
-def serve(host="127.0.0.1", port=8765, admin_token=None, agent_token=None):
-    srv = make_server(host, port, admin_token, agent_token)
-    print(f"Dashboard: http://{'127.0.0.1' if host == '0.0.0.0' else host}:{port}   (Ctrl+C to stop)")
+def serve(host="127.0.0.1", port=8765, admin_token=None, agent_token=None, open_browser=False):
+    try:
+        srv = make_server(host, port, admin_token, agent_token)
+    except OSError as e:
+        raise SystemExit(f"Cannot start on port {port}: {e}\nAn old copy may still be running. Close that window, "
+                         f"or use --port {port + 1}.")
+    url = f"http://{'127.0.0.1' if host == '0.0.0.0' else host}:{port}"
+    print(f"Dashboard: {url}")
+    print("KEEP THIS WINDOW OPEN while you use the dashboard. Press Ctrl+C to stop.", flush=True)
+    if open_browser:
+        webbrowser.open(url)
     try:
         srv.serve_forever()
+    except KeyboardInterrupt:
+        print("\nStopped.")
     finally:
+        srv.server_close()
         srv.reg.close()

@@ -2,15 +2,21 @@
 import json
 import shutil
 
-from .db import home
+from .db import connect, home
 
 
 def seed():
     h = home()
-    for p in (h / "workspace", h / "calendar.json", h / "outbox.jsonl", h / "agentgit.db"):
-        shutil.rmtree(p) if p.is_dir() else p.unlink(missing_ok=True)
+    conn = connect()  # empty the tables; deleting an open database file breaks it (and fails on Windows)
+    with conn:
+        for table in ("actions", "batches", "log", "capsules", "sqlite_sequence"):
+            conn.execute(f"DELETE FROM {table}")
+    conn.close()
+    shutil.rmtree(h / "workspace", ignore_errors=True)
+    for p in (h / "calendar.json", h / "outbox.jsonl"):
+        p.unlink(missing_ok=True)
     ws = h / "workspace"
-    ws.mkdir(parents=True)
+    ws.mkdir(parents=True, exist_ok=True)
     for n in ["maths_notes.pdf", "assignment.docx", "holiday.jpg", "timetable.xlsx", "todo.txt"]:
         (ws / n).write_text(f"sample content of {n}\n")
     events = [

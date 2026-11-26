@@ -26,16 +26,21 @@ def main(argv=None):
     sub.add_parser("tools", help="list every tool the gateway exposes, with effect class and risk")
     cp = sub.add_parser("capsule", help="routine capsules: save | run | list")
     cp.add_argument("action", choices=["save", "run", "list"]); cp.add_argument("arg1", nargs="?"); cp.add_argument("arg2", nargs="?")
+    dc = sub.add_parser("doctor", help="check the setup and say how to fix problems"); dc.add_argument("--port", type=int, default=8765)
     wb = sub.add_parser("web", help="dashboard + HTTP API for any agent")
     wb.add_argument("--host", default="127.0.0.1"); wb.add_argument("--port", type=int, default=8765)
     wb.add_argument("--admin-token"); wb.add_argument("--agent-token")
+    wb.add_argument("--open", action="store_true", help="open the dashboard in your browser")
     a = ap.parse_args(argv)
 
     if a.cmd == "seed":
         print("Demo data created in", seed()); return
     if a.cmd == "web":
         from .server import serve
-        serve(a.host, a.port, a.admin_token, a.agent_token); return
+        serve(a.host, a.port, a.admin_token, a.agent_token, a.open); return
+    if a.cmd == "doctor":
+        from .doctor import run
+        sys.exit(run(a.port))
     eng = make_engine("human")
     try:
         if a.cmd == "stage":

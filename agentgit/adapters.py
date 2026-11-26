@@ -6,6 +6,7 @@ apply() returns an exact undo record, so rollback is plain code, never an LLM gu
 import hashlib
 import json
 import os
+import re
 import threading
 import uuid
 from pathlib import Path
@@ -20,6 +21,11 @@ class AdapterError(Exception):
 
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
+
+def _mentions(text, value) -> bool:
+    """True if value appears as a whole token, so id 'e1' does not match inside 'up_ae1f3b'."""
+    return re.search(rf"(?<![\w-]){re.escape(str(value))}(?![\w-])", text) is not None
+
 
 _STR = {"type": "string"}
 
@@ -335,9 +341,9 @@ class UpstreamAdapter:
             return True
         out = self._call(v["tool"], render(v.get("args", {}), {"args": a}))
         if "contains" in v:
-            return str(render(v["contains"], {"args": a})) in out
+            return _mentions(out, render(v["contains"], {"args": a}))
         if "absent" in v:
-            return str(render(v["absent"], {"args": a})) not in out
+            return not _mentions(out, render(v["absent"], {"args": a}))
         return True
 
     def snapshot(self):

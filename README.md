@@ -39,6 +39,10 @@ agent token is rejected (403) on every human endpoint.
 | Dashboard | KPIs, approval queue, charts, live audit feed, agents, capsules, tools, data, chaos lab. |
 
 ## Quick start
+**Windows:** double-click `start.bat`. It checks the setup, starts the server and opens the dashboard. Keep that window open.
+If something is wrong, run `python -m agentgit.cli doctor`.
+
+**Manual way:**
 ```bash
 python -m venv .venv && source .venv/bin/activate      # Windows: python -m venv .venv ; .\.venv\Scripts\Activate.ps1
 export AGENTGIT_HOME=$PWD/data                          # Windows: $env:AGENTGIT_HOME = "$PWD\data"
@@ -67,7 +71,7 @@ AGENTGIT_AGENT_TOKEN=AGENT-SECRET python examples/http_agent.py
 
 ## Tests and measurements
 ```bash
-python -m unittest discover -s tests -v   # 22 tests: engine, proxy protocol, HTTP roles, audit, capsules, policy
+python -m unittest discover -s tests -v   # 25 tests: engine, proxy protocol, HTTP roles, audit, capsules, policy
 python scripts/chaos.py                   # failure and crash injection at every step, built-in AND third-party MCP server
 ```
 
